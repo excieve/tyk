@@ -1,7 +1,7 @@
 #!/bin/bash
 echo "Setting permissions"
 # Config file must not be world-readable due to sensitive data
-chown tyk:tyk /opt/tyk-gateway/tyk.conf
+chown -R tyk:tyk /opt/tyk-gateway
 chmod 660 /opt/tyk-gateway/tyk.conf
 
 echo "Creating a PID directory"
@@ -19,7 +19,7 @@ SYSV1="/etc/init.d"
 SYSV2="/etc/rc.d/init.d/"
 DIR="/opt/tyk-gateway/install"
 
-if [ -d "$SYSTEMD" -a -x "$(command -v systemctl)" ]; then
+if [ -d "$SYSTEMD" ] && systemctl status > /dev/null 2> /dev/null; then
 	echo "Found Systemd"
 	[ -f /etc/default/tyk-gateway ] || cp $DIR/inits/systemd/default/tyk-gateway /etc/default/
 	cp $DIR/inits/systemd/system/tyk-gateway.service /lib/systemd/system/
@@ -30,11 +30,18 @@ if [ -d "$SYSTEMD" -a -x "$(command -v systemctl)" ]; then
 fi
 
 if [ -d "$UPSTART" ]; then
-	echo "Found upstart"
 	[ -f /etc/default/tyk-gateway ] || cp $DIR/inits/upstart/default/tyk-gateway /etc/default/
-	cp $DIR/inits/upstart/init/tyk-gateway.conf /etc/init/
-	cp $DIR/inits/upstart/init/tyk-gateway-lua.conf /etc/init/
-	cp $DIR/inits/upstart/init/tyk-gateway-python.conf /etc/init/
+	if [[ "$(initctl version)" =~ .*upstart[[:space:]]1\..* ]]; then
+		echo "Found upstart 1.x+"
+		cp $DIR/inits/upstart/init/1.x/tyk-gateway.conf /etc/init/
+		cp $DIR/inits/upstart/init/1.x/tyk-gateway-lua.conf /etc/init/
+		cp $DIR/inits/upstart/init/1.x/tyk-gateway-python.conf /etc/init/
+	else
+		echo "Found upstart 0.x"
+		cp $DIR/inits/upstart/init/0.x/tyk-gateway.conf /etc/init/
+		cp $DIR/inits/upstart/init/0.x/tyk-gateway-lua.conf /etc/init/
+		cp $DIR/inits/upstart/init/0.x/tyk-gateway-python.conf /etc/init/
+	fi
 	exit
 fi
 
